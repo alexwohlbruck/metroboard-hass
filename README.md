@@ -10,6 +10,14 @@ Rules still come from their servers.
 
 Write-up: [Turning my Metroboard into a smart light](https://alex.wohlbruck.com/blog/metroboard-home-assistant)
 
+> [!WARNING]
+> Use this at your own risk. It changes the software on your Metroboard in a way
+> Design Rules doesn't support, and it could void your warranty or leave your
+> board not working. I'm not responsible for any damage to your board, problems
+> with your network or Home Assistant, or anything Design Rules does about a
+> modified board. The code is provided as is, with no warranty, under the MIT
+> license.
+
 ## Tested on
 
 | | |
@@ -95,6 +103,15 @@ on its power adapter. It shows up in Home Assistant under
 don't need to use "Add MQTT device".
 
 To change the config later, edit `mb_hass.json` and run `install` again.
+
+If it doesn't show up, check that `broker` is the broker Home Assistant's MQTT
+integration uses and that devices on your Wi-Fi can reach it. To see the
+bridge's logs, set `"debug": true`, run `install` again, leave the board plugged
+into your computer, and open its serial port:
+
+```bash
+python3 -m serial.tools.miniterm --dtr 0 --rts 0 /dev/cu.usbmodem* 115200
+```
 
 ## What install does
 
