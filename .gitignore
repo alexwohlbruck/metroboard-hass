@@ -1,0 +1,8 @@
+# Your config, with your broker address and credentials
+mb_hass.json
+# Flash dumps contain Wi-Fi credentials and the board's secrets
+*.bin
+*.mpy
+__pycache__/
+.venv/
+.DS_Store

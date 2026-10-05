@@ -1,0 +1,10 @@
+{
+  "broker": "192.168.1.10",
+  "port": 1883,
+  "user": null,
+  "password": null,
+  "discovery_prefix": "homeassistant",
+  "keepalive": 60,
+  "state_interval_s": 30,
+  "debug": false
+}
