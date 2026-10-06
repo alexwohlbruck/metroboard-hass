@@ -29,6 +29,30 @@ Write-up: [Turning my Metroboard into a smart light](https://alex.wohlbruck.com/
 Other cities should work the same way, but I've only tried Chicago. The
 installer stops if it can't find the spot in the app where the hook goes.
 
+### App v1.0.0 isn't supported
+
+Metroboards update themselves, and Design Rules' latest app is v1.0.0. It's
+compiled, so the hook can't go in it, and the bridge doesn't run on it yet. The
+installer switches the board back to v0.8.0 and blocks v1.0.0.
+
+That only works while v0.8.0 is still on the board. v1.0.0 first runs from
+`updated_app` alongside it, then replaces `base_app` and deletes v0.8.0 once it
+has been running long enough. If that has already happened on your board and
+you don't have an older backup, the installer stops and there's no way to
+install the bridge yet.
+
+### Known issue: the board can drop off Wi-Fi
+
+If the board loses its connection to the MQTT broker, for example while Home
+Assistant or the broker restarts, it can drop off Wi-Fi and stay off. The map
+stops updating and Home Assistant shows it as unavailable. Unplug the board's
+power and plug it back in to bring it back.
+
+The cause is in `mqtt_as`: when the broker connection drops, it turns Wi-Fi off
+before reconnecting. The bridge overrides how `mqtt_as` connects to Wi-Fi so it
+waits for the app's connection, but the app only connects Wi-Fi once at boot, so
+nothing turns it back on.
+
 The bridge is what's running on my board. The installer has been tested against
 copies of my board's filesystem, but not yet run end to end on a live board, so
 make the backup in step 2 before you try it.
@@ -151,11 +175,12 @@ buttons use.
 
 - **MQTT client.** Peter Hinch's
   [`mqtt_as`](https://github.com/peterhinch/micropython-mqtt), which does all
-  of its socket work asynchronously, so a slow or missing broker can't stall the
-  display. It reconnects on its own, and on every connect the bridge
+  of its socket work asynchronously, so waiting on the broker never blocks the
+  rest of the app. It reconnects on its own, and on every connect the bridge
   resubscribes and republishes discovery, availability and state.
 - **Wi-Fi.** The app owns the Wi-Fi connection. The bridge subclasses `mqtt_as`
-  so it waits for the app's connection instead of managing its own.
+  so it waits for the app's connection instead of making its own. See the known
+  issue above for the case this doesn't cover.
 - **Precompiled.** Both modules ship as `.mpy`. Importing the 36 KB `mqtt_as.py`
   source makes the board compile it next to the running app, and it runs out of
   memory.
@@ -198,7 +223,7 @@ mosquitto_pub -h <broker> -t metroboard/<device-id>/set/brightness -m LOW
 
 Updates from Design Rules only touch the app folders, so the bridge files at the
 root survive them. The board only skips the one update version the installer
-told it to. When Design Rules releases a newer one, the board downloads it,
+told it to, which is v1.0.0 today. When Design Rules releases a newer one, the board downloads it,
 switches to it, and Home Assistant control stops. Once that update has run for
 a while, it replaces `base_app` with a compiled copy, and there's no
 `app_main.py` left to hook.
