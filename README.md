@@ -41,17 +41,16 @@ has been running long enough. If that has already happened on your board and
 you don't have an older backup, the installer stops and there's no way to
 install the bridge yet.
 
-### Known issue: the board can drop off Wi-Fi
+### Fixed: the board dropping off Wi-Fi
 
-If the board loses its connection to the MQTT broker, for example while Home
-Assistant or the broker restarts, it can drop off Wi-Fi and stay off. The map
-stops updating and Home Assistant shows it as unavailable. Unplug the board's
-power and plug it back in to bring it back.
+Before October 12, 2026, the board could drop off Wi-Fi and stay off whenever it
+lost its connection to the MQTT broker, until its power was unplugged. When the
+broker connection dropped, `mqtt_as` turned Wi-Fi off before reconnecting, and
+the app only connects Wi-Fi once at boot, so nothing turned it back on.
 
-The cause is in `mqtt_as`: when the broker connection drops, it turns Wi-Fi off
-before reconnecting. The bridge overrides how `mqtt_as` connects to Wi-Fi so it
-waits for the app's connection, but the app only connects Wi-Fi once at boot, so
-nothing turns it back on.
+The bridge now stops `mqtt_as` from turning Wi-Fi off, and if Wi-Fi is down for
+30 seconds it reconnects using the network saved on the board. If you installed
+before then, plug the board in, pull the latest code and run `install` again.
 
 The bridge is what's running on my board. The installer has been tested against
 copies of my board's filesystem, but not yet run end to end on a live board, so
@@ -179,8 +178,9 @@ buttons use.
   rest of the app. It reconnects on its own, and on every connect the bridge
   resubscribes and republishes discovery, availability and state.
 - **Wi-Fi.** The app owns the Wi-Fi connection. The bridge subclasses `mqtt_as`
-  so it waits for the app's connection instead of making its own. See the known
-  issue above for the case this doesn't cover.
+  so it waits for the app's connection instead of making its own, and wraps the
+  Wi-Fi interface so `mqtt_as` can't turn it off. If Wi-Fi is down for 30
+  seconds, the bridge reconnects with the credentials the app already saved.
 - **Precompiled.** Both modules ship as `.mpy`. Importing the 36 KB `mqtt_as.py`
   source makes the board compile it next to the running app, and it runs out of
   memory.

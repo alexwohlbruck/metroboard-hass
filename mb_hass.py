@@ -346,14 +346,45 @@ def _make_client(cfg):
     import mqtt_as
     from boardinfo import BoardInfo
 
+    class _KeepWifi:
+        # mqtt_as disconnects Wi-Fi whenever the MQTT link drops, then expects
+        # to reconnect it. The app only connects Wi-Fi once at boot, so the
+        # board would stay offline. Pass everything through except turning
+        # Wi-Fi off; without an explicit disconnect, MicroPython reconnects on
+        # its own after a real outage.
+        def __init__(self, sta):
+            self._sta = sta
+
+        def disconnect(self):
+            pass
+
+        def active(self, *args):
+            if args and not args[0]:
+                return None
+            return self._sta.active(*args)
+
+        def __getattr__(self, name):
+            return getattr(self._sta, name)
+
     class _AppMQTT(mqtt_as.MQTTClient):
+        def __init__(self, config):
+            super().__init__(config)
+            self._sta_if = _KeepWifi(self._sta_if)
+
         async def wifi_connect(self, quick=False):
+            # The app connects Wi-Fi at boot and never again. Give MicroPython's
+            # own reconnect 30 s after a real outage, then reconnect ourselves.
             s = self._sta_if
-            for _ in range(120):
+            for i in range(120):
                 if s.isconnected():
                     return
+                if i == 30 and self._ssid:
+                    try:
+                        s.connect(self._ssid, self._wifi_pw)
+                    except OSError:
+                        pass
                 await asyncio.sleep(1)
-            raise OSError("wifi not up (app-managed)")
+            raise OSError("wifi not up")
 
     ssid, pw = (None, None)
     try:
@@ -406,7 +437,15 @@ async def _on_up(bridge):
             log.warning("on_up error: %s", e)
 
 
+_started = False
+
+
 async def run(ctx):
+    # Only start once, even if more than one launcher calls this.
+    global _started
+    if _started:
+        return
+    _started = True
     try:
         import gc
         gc.collect()
